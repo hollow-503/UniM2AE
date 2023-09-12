@@ -1,0 +1,138 @@
+image_size: [256, 704]
+voxel_size: [0.15, 0.15, 4]
+sparse_shape: [720, 720, 2]
+point_cloud_range: [-54.0, -54.0, -5.0, 54.0, 54.0, 3.0]
+
+model:
+  type: UniM2AE_MMIM
+
+  fusion_module: 
+    embed_dims: 192
+    strides: [1, 1]
+    positional_encoding:
+        type: SinePositionalEncoding3D
+        num_feats: 64
+        normalize: True
+    encoder:
+        type: DetrTransformerEncoder
+        num_layers: 3
+        transformerlayers:
+            type: BaseTransformerLayer
+            attn_cfgs:
+                type: MultiScaleDeformableAttention3D
+                embed_dims: 192
+                num_heads: 8
+                num_levels: 2
+                num_points: 4
+                im2col_step: 64
+                dropout: 0.0
+                batch_first: False
+            ffn_cfgs:
+                embed_dims: 192
+            feedforward_channels: 768
+            ffn_dropout: 0.0
+            operation_order: ['self_attn', 'norm', 'ffn', 'norm']
+
+  encoders:
+    camera:
+      backbone:
+        with_cp: true
+      
+      vtransform:
+        xbound: [-54.0, 54.0, 0.15]
+        ybound: [-54.0, 54.0, 0.15]
+        zbound: [-10.0, 10.0, 10.0]
+        downsample: 1
+        keep_z: True
+
+    lidar:
+      voxelize:
+        max_voxels: [-1, -1]
+        max_num_points: -1
+        voxel_size: ${voxel_size}
+        point_cloud_range: ${point_cloud_range}
+        Voxelization: true
+    
+      voxel_encoder:
+        type: DynamicVFE
+        in_channels: 5
+        feat_channels: [64, 128]
+        with_distance: false
+        voxel_size: ${voxel_size}
+        with_cluster_center: true
+        with_voxel_center: true
+        point_cloud_range: ${point_cloud_range}
+        norm_cfg: 
+          type: naiveSyncBN1d
+          eps: 1.0e-3
+          momentum: 0.01
+
+      middle_encoder:
+        type: SSTInputLayerV2
+        window_shape: [16, 16, 1]
+        sparse_shape: ${sparse_shape}
+        shuffle_voxels: true
+        debug: true
+        pos_temperature: 10000
+        normalize_pos: false
+        mute: true
+    
+      backbone:
+        type: SSTv2
+        d_model: [128, 128, 128, 128, 128, 128, 128, 128]
+        nhead: [8, 8, 8, 8, 8, 8, 8, 8]
+        num_blocks: 8
+        dim_feedforward: [256, 256, 256, 256, 256, 256, 256, 256]
+        output_shape: ${sparse_shape}
+        num_attached_conv: 3
+        conv_in_channel: 128
+        conv_out_channel: 128
+        checkpoint_blocks: [0, 1, 2, 3]
+        debug: true
+        norm_cfg:
+          type: naiveSyncBN3d
+          eps: 1.0e-3
+          momentum: 0.01
+        conv_cfg:
+          type: Conv3d
+          bias: False
+
+  decoder:
+    backbone:
+      in_channels: 128
+      out_channels: [64, 128, 256]
+      layer_nums: [3, 5, 5]
+      layer_strides: [2, 2, 2]
+    neck:
+      in_channels: [64, 128, 256]
+      out_channels: [128, 128, 128]
+      upsample_strides: [0.5, 1, 2]
+
+  heads:
+    object:
+      in_channels: 384
+      train_cfg:
+        grid_size: ${sparse_shape}
+        out_size_factor: 4
+      test_cfg:
+        grid_size: ${sparse_shape}
+        out_size_factor: 4
+      bbox_coder:
+        out_size_factor: 4
+
+optimizer:
+  lr: 1.0e-4
+
+evaluation:
+  interval: 5
+
+data:          
+  samples_per_gpu: 2
+  workers_per_gpu: 12
+
+checkpoint_config:
+  max_keep_ckpts: 5
+
+max_epochs: 10
+
+

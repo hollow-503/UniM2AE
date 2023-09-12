@@ -1,0 +1,75 @@
+voxel_size: [0.15, 0.15, 8]
+point_cloud_range: [-54.0, -54.0, -5.0, 54.0, 54.0, 3.0]
+
+model:
+  type: BEVFusion_SST
+  encoders:
+    lidar:
+      voxelize:
+        point_cloud_range: ${point_cloud_range}
+        voxel_size: ${voxel_size}
+        max_voxels: [-1, -1]
+        max_num_points: -1
+        Voxelization: true
+
+      voxel_encoder:
+        type: DynamicVFE
+        in_channels: 5
+        feat_channels: [64, 128]
+        with_distance: false
+        voxel_size: ${voxel_size}
+        with_cluster_center: true
+        with_voxel_center: true
+        point_cloud_range: ${point_cloud_range}
+      
+      middle_encoder:
+        type: SSTInputLayerV2
+        window_shape: [16, 16, 1]
+        sparse_shape: [720, 720, 1]
+        shuffle_voxels: true
+        debug: true
+        pos_temperature: 10000
+        normalize_pos: false
+        mute: true
+
+      backbone:
+        type: SSTv2
+        d_model: [128, 128, 128, 128, 128, 128, 128, 128]
+        nhead: [8, 8, 8, 8, 8, 8, 8, 8]
+        num_blocks: 8
+        dim_feedforward: [256, 256, 256, 256, 256, 256, 256, 256]
+        output_shape: [720, 720]
+        num_attached_conv: 3
+        conv_in_channel: 128
+        conv_out_channel: 128
+        debug: true
+  decoder:
+    backbone:
+      in_channels: 128
+      out_channels: [64, 128, 256]
+      layer_nums: [3, 5, 5]
+      layer_strides: [2, 2, 2]
+    neck:
+      in_channels: [64, 128, 256]
+      out_channels: [128, 128, 128]
+      upsample_strides: [0.5, 1, 2]
+
+  heads:
+    object:
+      in_channels: 384
+      train_cfg:
+        grid_size: [720, 720, 1]
+        out_size_factor: 4
+      test_cfg:
+        grid_size: [720, 720, 1]
+        out_size_factor: 4
+      bbox_coder:
+        out_size_factor: 4
+
+checkpoint_config:
+  max_keep_ckpts: 4
+
+data:          
+  samples_per_gpu: 4
+  workers_per_gpu: 12
+

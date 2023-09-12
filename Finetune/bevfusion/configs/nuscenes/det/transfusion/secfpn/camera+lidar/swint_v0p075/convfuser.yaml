@@ -1,0 +1,34 @@
+model:
+  encoders:
+    camera:
+      backbone:
+        init_cfg:
+          type: Pretrained
+          checkpoint: pretrained/swint-nuimages-pretrained.pth
+    lidar:
+      backbone:
+        type: SparseEncoder
+        in_channels: 5
+        sparse_shape: [1440, 1440, 41]
+        output_channels: 128
+        order:
+          - conv
+          - norm
+          - act
+        encoder_channels:
+          - [16, 16, 32]
+          - [32, 32, 64]
+          - [64, 64, 128]
+          - [128, 128]
+        encoder_paddings:
+          - [0, 0, 1]
+          - [0, 0, 1]
+          - [0, 0, [1, 1, 0]]
+          - [0, 0]
+        block_type: basicblock
+
+  fuser:
+    type: ConvFuser
+    in_channels: [80, 256]
+    out_channels: 256
+
