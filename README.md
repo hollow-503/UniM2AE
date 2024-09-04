@@ -1,6 +1,6 @@
 # UniM<sup>2</sup>AE: Multi-modal Masked Autoencoders with Unified 3D Representation for 3D Perception in Autonomous Driving
 
-### [Paper](https://arxiv.org/pdf/2308.10421v2.pdf) | [BibTeX](#citation)
+### [Paper](https://arxiv.org/abs/2308.10421) | [BibTeX](#citation)
 
 This is the official PyTorch implementation of the paper - UniM<sup>2</sup>AE: Multi-modal Masked Autoencoders with Unified 3D Representation for 3D Perception in Autonomous Driving.
 
